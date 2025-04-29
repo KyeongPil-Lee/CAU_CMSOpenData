@@ -1,5 +1,8 @@
 
 void makeHist_dimuon_nanoAOD() {
+  Bool_t isData = kTRUE;
+  std::cout << "isData: " << isData << std::endl;
+
   // -- define histograms to be filled
   // -- all muons
   TH1D* h_pt = new TH1D("h_pt", "Muon p_{T} (GeV)", 300, 0, 300);
@@ -23,7 +26,13 @@ void makeHist_dimuon_nanoAOD() {
   // -- add the nanoAOD files to the chain
   // chain->Add("Example_SingleMuon_Run2016H_NanoAOD.root");
   // -- you can add multiple files to the chain, saved in the cluster (you can use *)
-  chain->Add("/data2/kplee/Lecture/CMSOpenData/Data/SingleMuon/Run2016H/*.root");
+  if( isData ) {
+    // chain->Add("Example_SingleMuon_Run2016H_NanoAOD.root");
+    chain->Add("/data2/kplee/Lecture/CMSOpenData/Data/SingleMuon/Run2016H/*.root");
+  }
+  else {
+    chain->Add("/data2/kplee/Lecture/CMSOpenData/MC2016/DY_M50_aMCNLO/*.root");
+  }
 
   // -- TTreeReader: a useful class that reads the tree
   TTreeReader reader(chain); // -- put the chain into the reader
@@ -56,7 +65,7 @@ void makeHist_dimuon_nanoAOD() {
     reader.SetEntry(i_ev);
 
     // -- progress bar
-    if (i_ev % 1000 == 0) {
+    if (i_ev % 100000 == 0) {
       std::cout << "Processing event " << i_ev << " / " << nEvent_tot << " (" << (i_ev / (double)nEvent_tot) * 100 << "%)" << std::endl;
     }
 
@@ -108,7 +117,10 @@ void makeHist_dimuon_nanoAOD() {
   } // -- end of event loop
 
   // -- save the histograms
-  TFile* f_out = new TFile("hist_dimuon_nanoAOD.root", "RECREATE");
+  std::string fileName = "hist_dimuon_nanoAOD.root";
+  if( !isData ) fileName = "hist_dimuon_nanoAOD_MC.root";
+
+  TFile* f_out = new TFile(fileName.c_str(), "RECREATE");
   f_out->cd();
   h_pt->Write();
   h_eta->Write();
