@@ -34,7 +34,7 @@ def check_proxy():
 
 if __name__ == "__main__":
     inputDir_path = 'FileList'
-    outputDir_path = '/pnfs/knu.ac.kr/data/cms/store/user/kplee/CMSOpenData/Run2016H/SingleMuon'
+    outputDir_path = '/pnfs/knu.ac.kr/data/cms/store/user/kplee/CMSOpenData/MC2016/DY_M50_aMCNLO'
 
     # -- check CERN grid proxy
     if not check_proxy():
@@ -53,3 +53,4 @@ if __name__ == "__main__":
             continue
 
         os.system(f'xrdcp {file} {outputDir_path}')
+
