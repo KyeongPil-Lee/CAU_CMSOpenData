@@ -1,7 +1,15 @@
+#define LUMI 8740.1 // -- in /pb
 
 void makeHist_dimuon_nanoAOD() {
-  Bool_t isData = kTRUE;
+  TH1::SetDefaultSumw2();
+
+  Bool_t isData = kFALSE;
+  std::string mcType = "TT";
+  Bool_t doNorm = kTRUE;
+
   std::cout << "isData: " << isData << std::endl;
+  std::cout << "mcType: " << mcType << std::endl;
+  std::cout << "doNorm: " << doNorm << std::endl;
 
   // -- define histograms to be filled
   // -- all muons
@@ -31,7 +39,9 @@ void makeHist_dimuon_nanoAOD() {
     chain->Add("/data2/kplee/Lecture/CMSOpenData/Data/SingleMuon/Run2016H/*.root");
   }
   else {
-    chain->Add("/data2/kplee/Lecture/CMSOpenData/MC2016/DY_M50_aMCNLO/*.root");
+    if( mcType == "DY" )      chain->Add("/data2/kplee/Lecture/CMSOpenData/MC2016/DY_M50_aMCNLO/*.root");
+    else if( mcType == "TT" ) chain->Add("/data2/kplee/Lecture/CMSOpenData/MC2016/TTTo2L2Nu_Powheg/*.root");
+    else                      throw std::invalid_argument("Invalid MC type: " + mcType);
   }
 
   // -- TTreeReader: a useful class that reads the tree
@@ -51,22 +61,36 @@ void makeHist_dimuon_nanoAOD() {
   TTreeReaderArray<Bool_t> Muon_tightId(reader, "Muon_tightId");
   TTreeReaderArray<Float_t> Muon_pfRelIso04_all(reader, "Muon_pfRelIso04_all");
 
+  // -- MC only: should be initialized to nullptr first and assigned to a value only if it is MC
+  TTreeReaderValue<Float_t>* genWeight = nullptr;
+  if( !isData ) {
+    genWeight = new TTreeReaderValue<Float_t>(reader, "genWeight");
+  }
+
   // -- print the number of entries in the chain
   std::cout << "Number of entries in the chain: " << chain->GetEntries() << std::endl;
 
   Int_t nEvent_tot = reader.GetEntries(kTRUE);
 
-  if( nEvent_tot > 1e7 ) {
-    nEvent_tot = 1e7;
-    std::cout << "nEvent_tot is too large, set to 1e7" << std::endl;
-  }
+  // if( nEvent_tot > 1e6 ) {
+  //   nEvent_tot = 1e6;
+  //   std::cout << "nEvent_tot is too large, set to 1e6" << std::endl;
+  // }
 
+  Int_t sumWeight = 0;
+  // -- event loop
   for (Int_t i_ev = 0; i_ev < nEvent_tot; ++i_ev) {
     reader.SetEntry(i_ev);
 
     // -- progress bar
     if (i_ev % 100000 == 0) {
       std::cout << "Processing event " << i_ev << " / " << nEvent_tot << " (" << (i_ev / (double)nEvent_tot) * 100 << "%)" << std::endl;
+    }
+
+    Double_t event_weight = 1.0;
+    if( !isData ) {
+      event_weight = **genWeight < 0 ? -1.0 : 1.0;
+      sumWeight += event_weight;
     }
 
     // -- trigger selection
@@ -79,9 +103,9 @@ void makeHist_dimuon_nanoAOD() {
       Float_t eta = Muon_eta[i_lep];
       Float_t phi = Muon_phi[i_lep];
 
-      h_pt->Fill(pt); 
-      h_eta->Fill(eta);
-      h_phi->Fill(phi);
+      h_pt->Fill(pt, event_weight); 
+      h_eta->Fill(eta, event_weight);
+      h_phi->Fill(phi, event_weight);
 
       if (Muon_tightId[i_lep] == 1 && Muon_pfRelIso04_all[i_lep] < 0.15 && 
           Muon_pt[i_lep] > 26.0 && TMath::Abs(Muon_eta[i_lep]) < 2.4) {
@@ -103,22 +127,44 @@ void makeHist_dimuon_nanoAOD() {
 
       if( dimu.M() < 60 || dimu.M() > 120 ) continue;
 
-      h_sMu_pt->Fill(mu1.Pt());
-      h_sMu_eta->Fill(mu1.Eta());
-      h_sMu_phi->Fill(mu1.Phi());
-      h_sMu_pt->Fill(mu2.Pt());
-      h_sMu_eta->Fill(mu2.Eta());
-      h_sMu_phi->Fill(mu2.Phi());
+      h_sMu_pt->Fill(mu1.Pt(), event_weight);
+      h_sMu_eta->Fill(mu1.Eta(), event_weight);
+      h_sMu_phi->Fill(mu1.Phi(), event_weight);
+      h_sMu_pt->Fill(mu2.Pt(), event_weight);
+      h_sMu_eta->Fill(mu2.Eta(), event_weight);
+      h_sMu_phi->Fill(mu2.Phi(), event_weight);
 
-      h_dimu_mass->Fill(dimu.M());
-      h_dimu_pt->Fill(dimu.Pt());
+      h_dimu_mass->Fill(dimu.M(), event_weight);
+      h_dimu_pt->Fill(dimu.Pt(), event_weight);
     }
 
   } // -- end of event loop
 
+  std::cout << "sumWeight: " << sumWeight << std::endl;
+  if( !isData && doNorm ) {
+    Double_t xSec = -1.0;
+    if( mcType == "DY" )      xSec = 6019.95;
+    else if( mcType == "TT" ) xSec = 88.51;
+    else throw std::invalid_argument("Invalid MC type: " + mcType);
+
+    Double_t normFactor = (xSec * LUMI) / sumWeight;
+    std::cout << "normFactor: " << normFactor << std::endl;
+
+    h_pt->Scale(normFactor);
+    h_eta->Scale(normFactor);
+    h_phi->Scale(normFactor);
+
+    h_sMu_pt->Scale(normFactor);
+    h_sMu_eta->Scale(normFactor);
+    h_sMu_phi->Scale(normFactor);
+
+    h_dimu_mass->Scale(normFactor);
+    h_dimu_pt->Scale(normFactor);  
+  }
+
   // -- save the histograms
   std::string fileName = "hist_dimuon_nanoAOD.root";
-  if( !isData ) fileName = "hist_dimuon_nanoAOD_MC.root";
+  if( !isData ) fileName = "hist_dimuon_nanoAOD_MC_" + mcType + ".root";
 
   TFile* f_out = new TFile(fileName.c_str(), "RECREATE");
   f_out->cd();

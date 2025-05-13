@@ -1,7 +1,7 @@
 
 void comparison_dataMC() {
   TFile* f_data = TFile::Open("hist_dimuon_nanoAOD.root");
-  TFile* f_MC   = TFile::Open("hist_dimuon_nanoAOD_MC.root");
+  TFile* f_MC   = TFile::Open("hist_dimuon_nanoAOD_MC_DY.root");
 
   TH1D* h_sMu_pt_data = (TH1D*)f_data->Get("h_sMu_pt");
   TH1D* h_sMu_pt_MC   = (TH1D*)f_MC->Get("h_sMu_pt");
@@ -12,6 +12,8 @@ void comparison_dataMC() {
 
   h_sMu_pt_data->SetLineColor(kBlack);
   h_sMu_pt_MC->SetLineColor(kBlue);
+
+  // h_sMu_pt_data->GetYaxis()->SetRangeUser(0, 1e5);
 
   h_sMu_pt_MC->Draw();
   h_sMu_pt_data->Draw("SAME");
@@ -32,6 +34,22 @@ void comparison_dataMC() {
   h_dimu_mass_data->Draw("SAME");
 
   c_dimu_mass->SaveAs(".pdf");
+
+  // -- dimuon mass, ratio
+  TCanvas *c_dimu_mass_ratio = new TCanvas("c_dimu_mass_ratio", "c_dimu_mass_ratio", 800, 600);
+  c_dimu_mass_ratio->cd();
+
+  // -- to reduce the stat. fluctuation
+  h_dimu_mass_data->Rebin(4); // -- bin size: 2 GeV
+  h_dimu_mass_MC->Rebin(4);
+
+  TH1D* h_dimu_mass_ratio = (TH1D*)h_dimu_mass_data->Clone("h_dimu_mass_ratio");
+  h_dimu_mass_ratio->Divide(h_dimu_mass_MC);
+  h_dimu_mass_ratio->Draw();
+
+  h_dimu_mass_ratio->GetYaxis()->SetRangeUser(0.7, 1.3);
+
+  c_dimu_mass_ratio->SaveAs(".pdf");
 
   // -- dimuon mass, shape only
   TCanvas *c_dimu_mass_shape = new TCanvas("c_dimu_mass_shape", "c_dimu_mass_shape", 800, 600);
