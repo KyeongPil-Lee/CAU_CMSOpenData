@@ -1,3 +1,13 @@
+Double_t Count_nEvent_ZPeak(TH1D* h_dimu_mass) {
+  Double_t nEvent_ZPeak = 0;
+  for(Int_t i=0; i<h_dimu_mass->GetNbinsX(); i++) {
+    Int_t i_bin = i+1;
+    Double_t binCenter = h_dimu_mass->GetBinCenter(i_bin);
+    if( binCenter < 60.0 || binCenter > 120.0 ) continue;
+    nEvent_ZPeak += h_dimu_mass->GetBinContent(i_bin);
+  }
+  return nEvent_ZPeak;
+}
 
 void comparison_dataMCStack() {
   TFile* f_data = TFile::Open("hist_dimuon_nanoAOD.root");
@@ -50,4 +60,16 @@ void comparison_dataMCStack() {
   h_dimu_mass_ratio->GetYaxis()->SetRangeUser(0.7, 1.3);
 
   c_dimu_mass_ratio->SaveAs("c_dimu_mass_ratio_stack.pdf");
+
+  // -- calculate Z cross section
+  Double_t nEvent_data = Count_nEvent_ZPeak(h_dimu_mass_data);
+  Double_t nEvent_MC_TT = Count_nEvent_ZPeak(h_dimu_mass_MC_TT);
+
+  Double_t nEvent_obs = nEvent_data - nEvent_MC_TT;
+  // -- values: from acc_eff.cc
+  Double_t acc = 0.361926;
+  Double_t eff = 0.857341;
+  Double_t lumi = 8740.1;
+
+  std::cout << "cross section = " << nEvent_obs << " / ( " << acc << " * " << eff << " * " << lumi << " ) = " << nEvent_obs / (acc * eff * lumi) << " pb" << std::endl;  
 }
