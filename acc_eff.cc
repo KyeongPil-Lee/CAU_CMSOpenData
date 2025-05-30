@@ -1,4 +1,19 @@
+#include "commonTool.h"
+
 void acc_eff() {
+  Bool_t useEffSF = kTRUE;
+  cout << "useEffSF: " << useEffSF << endl;
+
+  // -- load efficiency and scale factors
+  TFile *f_SF_ID   = TFile::Open("EffSF/EffSF_Muon_ID.root");
+  TFile *f_SF_ISO  = TFile::Open("EffSF/EffSF_Muon_ISO.root");
+  TFile *f_SF_TRIG = TFile::Open("EffSF/EffSF_Muon_TRIG.root");
+
+  TH2D* h2D_SF_ID         = (TH2D*)f_SF_ID->Get("NUM_TightID_DEN_TrackerMuons_abseta_pt")->Clone();
+  TH2D* h2D_SF_ISO        = (TH2D*)f_SF_ISO->Get("NUM_TightRelIso_DEN_TightIDandIPCut_abseta_pt")->Clone();
+  TH2D* h2D_eff_data_TRIG = (TH2D*)f_SF_TRIG->Get("NUM_IsoMu24_or_IsoTkMu24_DEN_CutBasedIdTight_and_PFIsoTight_abseta_pt_efficiencyData")->Clone();
+  TH2D* h2D_eff_mc_TRIG   = (TH2D*)f_SF_TRIG->Get("NUM_IsoMu24_or_IsoTkMu24_DEN_CutBasedIdTight_and_PFIsoTight_abseta_pt_efficiencyMC")->Clone();
+
   TChain *chain = new TChain("Events"); // -- "Events": name of the tree in the nanoAOD file
   // -- Z MC
   chain->Add("/data2/kplee/Lecture/CMSOpenData/MC2016/DY_M50_aMCNLO/*.root");
@@ -35,7 +50,7 @@ void acc_eff() {
   std::cout << "Number of entries in the chain: " << chain->GetEntries() << std::endl;
 
   Int_t nEvent_tot = reader.GetEntries(kTRUE);
-  nEvent_tot = 1000000;
+  nEvent_tot = 10000000;
 
   Double_t sumWeight_tot = 0; // -- sum of weights (denominator of the acceptance)
   Double_t sumWeight_acc = 0; // -- sum of weights passing acceptance condition (numerator of the acceptance)
@@ -124,7 +139,28 @@ void acc_eff() {
 
         if( dimu.M() < 60 || dimu.M() > 120 ) continue;
 
-        sumWeight_eff += event_weight; // -- numerator of the efficiency
+        Double_t SF_all = 1.0;
+        if( useEffSF ) { 
+          Double_t SF_ID_mu1 = Get_SF(h2D_SF_ID, mu1.Pt(), mu1.Eta());
+          Double_t SF_ID_mu2 = Get_SF(h2D_SF_ID, mu2.Pt(), mu2.Eta());
+
+          Double_t SF_ISO_mu1 = Get_SF(h2D_SF_ISO, mu1.Pt(), mu1.Eta());
+          Double_t SF_ISO_mu2 = Get_SF(h2D_SF_ISO, mu2.Pt(), mu2.Eta());
+
+          Double_t SF_ID = SF_ID_mu1 * SF_ID_mu2;
+          Double_t SF_ISO = SF_ISO_mu1 * SF_ISO_mu2;
+
+          Double_t SF_TRIG = Get_TrigSF(h2D_eff_data_TRIG, h2D_eff_mc_TRIG, mu2.Pt(), mu2.Eta(), mu1.Pt(), mu1.Eta());
+
+          SF_all = SF_ID * SF_ISO * SF_TRIG;
+
+          // cout << "SF_ID = " << SF_ID << ", SF_ISO = " << SF_ISO << ", SF_TRIG = " << SF_TRIG << ", SF_all = " << SF_all << endl;
+        }
+        else {
+          SF_all = 1.0;
+        }
+
+        sumWeight_eff += event_weight * SF_all; // -- numerator of the efficiency
       }
     } // -- end of pass_acc
   } // -- end of event loop

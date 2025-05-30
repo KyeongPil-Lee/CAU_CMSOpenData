@@ -11,8 +11,9 @@ Double_t Count_nEvent_ZPeak(TH1D* h_dimu_mass) {
 
 void comparison_dataMCStack() {
   TFile* f_data = TFile::Open("hist_dimuon_nanoAOD.root");
-  TFile* f_MC_DY = TFile::Open("hist_dimuon_nanoAOD_MC_DY.root");
-  TFile* f_MC_TT = TFile::Open("hist_dimuon_nanoAOD_MC_TT.root");
+  TFile* f_MC_DY   = TFile::Open("hist_dimuon_nanoAOD_MC_DY.root");
+  TFile* f_MC_DYTT = TFile::Open("hist_dimuon_nanoAOD_MC_DYTT.root");
+  TFile* f_MC_TT   = TFile::Open("hist_dimuon_nanoAOD_MC_TT.root");
 
   // -- dimuon mass comparison
   TCanvas *c_dimu_mass = new TCanvas("c_dimu_mass_stack", "c_dimu_mass_stack", 800, 600);
@@ -20,6 +21,7 @@ void comparison_dataMCStack() {
 
   TH1D* h_dimu_mass_data = (TH1D*)f_data->Get("h_dimu_mass");
   TH1D* h_dimu_mass_MC_DY = (TH1D*)f_MC_DY->Get("h_dimu_mass");
+  TH1D* h_dimu_mass_MC_DYTT = (TH1D*)f_MC_DYTT->Get("h_dimu_mass");
   TH1D* h_dimu_mass_MC_TT = (TH1D*)f_MC_TT->Get("h_dimu_mass");
 
   h_dimu_mass_data->SetLineColor(kBlack);
@@ -29,11 +31,14 @@ void comparison_dataMCStack() {
 
   h_dimu_mass_MC_TT->SetLineColor(kRed-2);
   h_dimu_mass_MC_TT->SetFillColor(kRed-2);
+  h_dimu_mass_MC_DYTT->SetLineColor(kBlue-2);
+  h_dimu_mass_MC_DYTT->SetFillColor(kBlue-2);
   h_dimu_mass_MC_DY->SetLineColor(kGreen-2);
   h_dimu_mass_MC_DY->SetFillColor(kGreen-2);
 
   THStack* h_dimu_mass_MCStack = new THStack("h_dimu_mass_MCStack", "h_dimu_mass_MCStack");
   h_dimu_mass_MCStack->Add(h_dimu_mass_MC_TT);
+  h_dimu_mass_MCStack->Add(h_dimu_mass_MC_DYTT);
   h_dimu_mass_MCStack->Add(h_dimu_mass_MC_DY);
 
   h_dimu_mass_data->Draw();
@@ -52,6 +57,7 @@ void comparison_dataMCStack() {
 
   TH1D* h_dimu_mass_totMC = (TH1D*)h_dimu_mass_MC_DY->Clone("h_dimu_mass_totMC");
   h_dimu_mass_totMC->Add(h_dimu_mass_MC_TT);
+  h_dimu_mass_totMC->Add(h_dimu_mass_MC_DYTT);
 
   TH1D* h_dimu_mass_ratio = (TH1D*)h_dimu_mass_data->Clone("h_dimu_mass_ratio");
   h_dimu_mass_ratio->Divide(h_dimu_mass_totMC);
@@ -64,12 +70,20 @@ void comparison_dataMCStack() {
   // -- calculate Z cross section
   Double_t nEvent_data = Count_nEvent_ZPeak(h_dimu_mass_data);
   Double_t nEvent_MC_TT = Count_nEvent_ZPeak(h_dimu_mass_MC_TT);
+  Double_t nEvent_MC_DYTT = Count_nEvent_ZPeak(h_dimu_mass_MC_DYTT);
 
-  Double_t nEvent_obs = nEvent_data - nEvent_MC_TT;
+  Double_t nEvent_obs = nEvent_data - nEvent_MC_TT - nEvent_MC_DYTT;
+  cout << "nEvent_obs = " << nEvent_obs << endl;
+  cout << "nEvent_MC_TT = " << nEvent_MC_TT << endl;
+  cout << "nEvent_MC_DYTT = " << nEvent_MC_DYTT << endl;
+  cout << "nEvent_data = " << nEvent_data << endl;
+
   // -- values: from acc_eff.cc
+
   Double_t acc = 0.361926;
-  Double_t eff = 0.857341;
+  // Double_t eff = 0.857341;   // -- before applying SF
+  Double_t eff = 0.826028;   // -- after applying SF
   Double_t lumi = 8740.1;
 
-  std::cout << "cross section = " << nEvent_obs << " / ( " << acc << " * " << eff << " * " << lumi << " ) = " << nEvent_obs / (acc * eff * lumi) << " pb" << std::endl;  
+  std::cout << "cross section = " << nEvent_obs << " / ( " << acc << " * " << eff << " * " << lumi << " ) = " << nEvent_obs / (acc * eff * lumi) << " pb" << std::endl;
 }

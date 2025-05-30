@@ -45,7 +45,7 @@ void split_DY_by_flavor() {
         TFile *fout_mm = new TFile(baseDir + "/mm/" + baseFileName + "_mm.root", "RECREATE");
         TFile *fout_tt = new TFile(baseDir + "/tt/" + baseFileName + "_tt.root", "RECREATE");
         
-        // 새로운 트리 생성
+        // 새로운 트리 생성 - 원본 트리를 그대로 복사
         TTree *tree_ee = currentChain->CloneTree(0);
         TTree *tree_mm = currentChain->CloneTree(0);
         TTree *tree_tt = currentChain->CloneTree(0);
@@ -59,6 +59,7 @@ void split_DY_by_flavor() {
         Long64_t nEntries = reader.GetEntries(kTRUE);
         for(Long64_t i = 0; i < nEntries; i++) {
             reader.SetEntry(i);
+            currentChain->GetEntry(i);  // 현재 이벤트의 모든 브랜치 데이터 로드
             
             // 진행상황 출력
             if(i % 100000 == 0) {
@@ -95,15 +96,15 @@ void split_DY_by_flavor() {
         
         // 결과 저장
         fout_ee->cd();
-        tree_ee->Write();
+        tree_ee->Write("", TObject::kOverwrite);
         fout_ee->Close();
         
         fout_mm->cd();
-        tree_mm->Write();
+        tree_mm->Write("", TObject::kOverwrite);
         fout_mm->Close();
         
         fout_tt->cd();
-        tree_tt->Write();
+        tree_tt->Write("", TObject::kOverwrite);
         fout_tt->Close();
         
         // 현재 파일의 결과 출력
