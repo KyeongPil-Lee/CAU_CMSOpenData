@@ -44,7 +44,7 @@ def download_with_wget(url, output_dir):
     os.makedirs(output_dir, exist_ok=True)
     
     # Use wget to download
-    cmd = f'wget -O "{output_path}" "{url}"'
+    cmd = f'wget -O "{output_path}" "{url}" --no-check-certificate' # -- no-check-certificate is added to avoid the certificate error
     print(f"Downloading: {url}")
     print(f"Command: {cmd}")
     
